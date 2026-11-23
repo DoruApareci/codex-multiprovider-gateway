@@ -214,7 +214,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         LOG.info("Gateway started; registered_external_models=%d", len(app.state.settings.routes))
         yield
 
-    application = FastAPI(title="Local Codex Multi-Provider Gateway ",
+    application = FastAPI(title="Local Codex Multi-Provider Gateway v2",
                           docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     if settings is not None:
         application.state.settings = settings
@@ -249,7 +249,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.get("/health")
     async def health() -> dict[str, str]:
-        return {"status": "ok", "service": "codex-multiprovider-gateway-"}
+        return {"status": "ok", "service": "codex-multiprovider-gateway-v2"}
 
     @application.get("/routes")
     async def routes(request: Request):
@@ -303,16 +303,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             data = json.dumps(replaced, separators=(",", ":")).encode()
             route_name = route.provider
         else:
-            # Unknown model slugs must NOT be forwarded blindly to OpenAI.
-            try:
-                status, catalog = await openai_catalog(request)
-            except (httpx.RequestError, ValueError, json.JSONDecodeError):
-                return JSONResponse(status_code=502, content={"error": "Could not verify OpenAI model route"})
-            if status != 200 or catalog is None:
-                return JSONResponse(status_code=status, content={"error": "Could not verify ChatGPT model access"})
-            known = {m.get("slug") for m in catalog["models"] if isinstance(m, dict)}
-            if model not in known:
-                raise HTTPException(status_code=404, detail="Model not enabled in gateway")
+            # A configured external model must never silently fall back to ChatGPT.
+            # In particular, this catches external models skipped for missing keys.
+            if model in cfg.skipped:
+                LOG.warning("Unavailable external model=%s reason=%s", model, cfg.skipped[model])
+                return JSONResponse(status_code=503, content={
+                    "error": "Configured external model unavailable",
+                    "model": model,
+                    "reason": cfg.skipped[model],
+                })
+            # ChatGPT is the authoritative validator for first-party model access.
+            # Do not preflight GET /models on every inference request: catalog reads
+            # may fail independently of valid inference credentials or be unavailable
+            # without the client's version query parameter. Any unknown GPT model
+            # will be rejected by ChatGPT's own /responses endpoint.
             upstream = cfg.providers["openai-chatgpt"].base_url + "/responses"
             headers = chatgpt_headers(request)
             data = body  # preserve OpenAI payload byte-for-byte
