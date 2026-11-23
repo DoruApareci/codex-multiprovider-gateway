@@ -1,0 +1,17 @@
+{
+  "slug": "placeholder",
+  "display_name": "Provider model",
+  "description": "Custom Responses-compatible agent model. Confirm model capabilities before production use.",
+  "base_instructions": "Help the user with coding tasks and execute permitted tools when available.",
+  "supported_reasoning_levels": [],
+  "shell_type": "shell_command",
+  "visibility": "list",
+  "supported_in_api": true,
+  "priority": 10,
+  "support_verbosity": false,
+  "truncation_policy": { "mode": "tokens", "limit": 10000 },
+  "apply_patch_tool_type": "freeform",
+  "experimental_supported_tools": [],
+  "input_modalities": ["text"],
+  "upgrade": null
+}

@@ -1,0 +1,43 @@
+services:
+  gateway:
+    build: .
+    image: local/codex-multiprovider-gateway:2
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      GATEWAY_LOCAL_KEY: ${GATEWAY_LOCAL_KEY:?Run scripts/setup.ps1 first}
+      Z_AI_KEY: ${Z_AI_KEY:-}
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_BASE_URL: ${AZURE_OPENAI_BASE_URL:-}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Run scripts/setup.ps1 first}
+      LOG_LEVEL: INFO
+      CONFIG_PATH: /app/providers.yaml
+    volumes:
+      - ./providers.yaml:/app/providers.yaml:ro
+      - ./catalog:/app/catalog:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  translator:
+    profiles: ["translation"]
+    image: docker.litellm.ai/berriai/litellm:latest
+    command: ["--config", "/app/config.yaml", "--host", "0.0.0.0", "--port", "4000"]
+    restart: unless-stopped
+    environment:
+      MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Run scripts/setup.ps1 first}
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    # Translator is internal-only, NOT mapped to Windows host.
+    expose:
+      - "4000"
+    security_opt:
+      - no-new-privileges:true

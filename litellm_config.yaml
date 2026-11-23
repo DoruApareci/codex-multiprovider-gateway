@@ -1,0 +1,15 @@
+# Responses -> Chat Completions translation for Moonshot/Kimi.
+# Launch with: docker compose --profile translation up -d --build
+model_list:
+  - model_name: kimi-k3
+    litellm_params:
+      model: moonshot/kimi-k3
+      api_key: os.environ/MOONSHOT_API_KEY
+      api_base: https://api.moonshot.ai/v1
+  - model_name: kimi-k3.1-pro
+    litellm_params:
+      model: moonshot/kimi-k3.1-pro
+      api_key: os.environ/MOONSHOT_API_KEY
+      api_base: https://api.moonshot.ai/v1
+litellm_settings:
+  drop_params: false

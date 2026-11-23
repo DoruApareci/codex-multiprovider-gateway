@@ -1,0 +1,15 @@
+# Merge these top-level keys BEFORE the first [table] of your EXISTING config.toml
+model_provider = "LOCAL_GATEWAY"
+model = "glm-5.3"
+model_reasoning_effort = "high"
+# IMPORTANT: remove/comment any model_catalog_json setting.
+
+# Merge this table with your other provider tables, do not duplicate it.
+[model_providers.LOCAL_GATEWAY]
+name = "Local Multi-Provider Gateway"
+base_url = "http://127.0.0.1:8787/backend-api/codex"
+model_catalog_url = "http://127.0.0.1:8787/backend-api/codex/models"
+wire_api = "responses"
+requires_openai_auth = true
+supports_websockets = false
+env_http_headers = { "X-Local-Gateway-Key" = "CODEX_LOCAL_GATEWAY_KEY" }

@@ -1,0 +1,87 @@
+# This is the editable, declarative model and provider registry.
+# Secrets go in .env, NOT here. Restart Docker gateway after editing.
+providers:
+  openai-chatgpt:
+    protocol: chatgpt
+    base_url: https://chatgpt.com/backend-api/codex
+  zai:
+    protocol: responses
+    base_url: https://api.z.ai/api/v1
+    auth: bearer
+    api_key_env: Z_AI_KEY
+  azure:
+    protocol: responses
+    base_url: ${AZURE_OPENAI_BASE_URL}
+    auth: api-key
+    api_key_env: AZURE_OPENAI_API_KEY
+  deepseek:
+    protocol: responses
+    base_url: https://api.deepseek.com
+    auth: bearer
+    api_key_env: DEEPSEEK_API_KEY
+  moonshot:
+    # This points at the OPTIONAL internal LiteLLM translator, not at Moonshot directly.
+    protocol: responses
+    base_url: http://translator:4000/v1
+    auth: bearer
+    api_key_env: LITELLM_MASTER_KEY
+
+models:
+  - slug: glm-5.3
+    provider: zai
+    upstream_model: glm-5.3
+    metadata_file: catalog/glm-5.3.json
+    enabled: true
+
+  - slug: glm-5.3-flash
+    provider: zai
+    upstream_model: glm-5.3-flash
+    metadata_file: catalog/glm-5.3-flash.json
+    display_name: GLM-5.3-Flash (Z.ai)
+    enabled: true
+
+  # Enable after confirming your Z.ai account supports the exact ID.
+  - slug: glm-extra
+    provider: zai
+    upstream_model: YOUR_OTHER_GLM_MODEL_ID
+    metadata_file: catalog/agent-template.json
+    display_name: Other GLM (configure model ID)
+    enabled: false
+
+  # Azure requires YOUR deployment name, not the base model ID.
+  - slug: azure-gpt
+    provider: azure
+    upstream_model: ${AZURE_OPENAI_DEPLOYMENT}
+    metadata_file: catalog/agent-template.json
+    display_name: Azure GPT (deployment)
+    enabled: true
+
+  - slug: deepseek-v4-pro
+    provider: deepseek
+    upstream_model: deepseek-v4-pro
+    metadata_file: catalog/agent-template.json
+    display_name: DeepSeek V4 Pro
+    enabled: false
+
+  - slug: deepseek-flash
+    provider: deepseek
+    upstream_model: deepseek-flash
+    metadata_file: catalog/agent-template.json
+    display_name: DeepSeek Flash
+    enabled: false
+
+  # Requires MOONSHOT_API_KEY in .env, translation profile running,
+  # and enabled: true below. Check tool loop before real agent use.
+  - slug: kimi-k3
+    provider: moonshot
+    upstream_model: kimi-k3
+    metadata_file: catalog/agent-template.json
+    display_name: Kimi K3 (Moonshot via LiteLLM)
+    enabled: false
+
+  - slug: kimi-k3.1-pro
+    provider: moonshot
+    upstream_model: kimi-k3.1-pro
+    metadata_file: catalog/agent-template.json
+    display_name: Kimi K3.1 Pro (Moonshot via LiteLLM)
+    enabled: false

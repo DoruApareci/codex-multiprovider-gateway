@@ -4,6 +4,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+import yaml
 
 import gateway
 
@@ -65,24 +66,29 @@ async def test_models_merge_and_openaI_credentials_only_go_to_chatgpt(settings, 
     async with await client_for(settings) as client:
         r = await client.get("/backend-api/codex/models?client_version=0.1", headers=auth_headers())
     assert r.status_code == 200
-    assert {m["slug"] for m in r.json()["models"]} == {"gpt-6-sol", "glm-5.3"}
+    assert {m["slug"] for m in r.json()["models"]} == {"gpt-6-sol", "glm-5.3", "glm-5.3-flash"}
+    flash = next(m for m in r.json()["models"] if m["slug"] == "glm-5.3-flash")
+    assert flash["description"] == settings.routes["glm-5.3-flash"].metadata["description"]
+    assert "GLM-5.3-Flash" in flash["description"]
+    assert flash["input_modalities"] == ["text", "image"]
     assert r.json()["etag"] == "x"
     assert len(seen) == 1
 
 
 @pytest.mark.asyncio
-async def test_zai_streaming_and_credential_isolation(settings, monkeypatch):
+@pytest.mark.parametrize("model", ["glm-5.3", "glm-5.3-flash"])
+async def test_zai_streaming_and_credential_isolation(settings, monkeypatch, model):
     events = b'event: response.completed\ndata: {"type":"response.completed"}\n\n'
     def handler(req):
         assert req.url == "https://api.z.ai/api/v1/responses"
         assert req.headers.get("authorization") == "Bearer zai-private-key"
         assert "chatgpt-account-id" not in req.headers
         assert "x-local-gateway-key" not in req.headers
-        assert json.loads(req.content)["model"] == "glm-5.3"
+        assert json.loads(req.content)["model"] == model
         return streamed(200, events, 'text/event-stream')
     fake_upstream(monkeypatch, handler)
     async with await client_for(settings) as client:
-        result = await client.post("/v1/responses", json={"model": "glm-5.3", "stream": True}, headers=auth_headers())
+        result = await client.post("/v1/responses", json={"model": model, "stream": True}, headers=auth_headers())
     assert result.status_code == 200
     assert result.content == events
     assert result.headers["content-type"].startswith("text/event-stream")
@@ -108,8 +114,13 @@ async def test_azure_deployment_remap_and_api_key(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_deepseek_uses_responses_api_and_bearer(monkeypatch):
-    cfg = load(DEEPSEEK_API_KEY="deepseek-secret")
+async def test_deepseek_uses_responses_api_and_bearer(monkeypatch, tmp_path):
+    config = yaml.safe_load((ROOT / "providers.yaml").read_text())
+    next(model for model in config["models"] if model["slug"] == "deepseek-v4-pro")["enabled"] = True
+    config_path = tmp_path / "providers.yaml"
+    config_path.write_text(yaml.safe_dump(config))
+    shutil.copytree(ROOT / "catalog", tmp_path / "catalog")
+    cfg = gateway.load_settings(config_path, {"GATEWAY_LOCAL_KEY": KEY, "DEEPSEEK_API_KEY": "deepseek-secret"})
     def handler(req):
         assert str(req.url) == "https://api.deepseek.com/responses"
         assert req.headers["authorization"] == "Bearer deepseek-secret"
