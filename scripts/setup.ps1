@@ -36,6 +36,7 @@ $fields = [ordered]@{
     AZURE_OPENAI_DEPLOYMENT = (Read-ExistingKey 'AZURE_OPENAI_DEPLOYMENT')
     DEEPSEEK_API_KEY = (Read-ExistingKey 'DEEPSEEK_API_KEY')
     MOONSHOT_API_KEY = (Read-ExistingKey 'MOONSHOT_API_KEY')
+    GEMINI_API_KEY = (Read-ExistingKey 'GEMINI_API_KEY')
 }
 $lines = @()
 foreach ($pair in $fields.GetEnumerator()) {
@@ -47,5 +48,5 @@ foreach ($pair in $fields.GetEnumerator()) {
 Write-Host 'Created .env. Keep it private: it contains API credentials.'
 Write-Host 'Saved CODEX_LOCAL_GATEWAY_KEY as Windows User environment variable.'
 Write-Host 'Start: docker compose up -d --build'
-Write-Host 'Optional Moonshot translation: docker compose --profile translation up -d --build'
+Write-Host 'Optional Google/Moonshot translation: docker compose --profile translation up -d --build'
 Write-Host 'Fully exit and relaunch Codex so it inherits the key.'

@@ -33,6 +33,7 @@ services:
     restart: unless-stopped
     environment:
       MOONSHOT_API_KEY: ${MOONSHOT_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?Run scripts/setup.ps1 first}
     volumes:
       - ./litellm_config.yaml:/app/config.yaml:ro

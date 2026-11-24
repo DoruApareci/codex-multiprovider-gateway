@@ -134,17 +134,18 @@ async def test_deepseek_uses_responses_api_and_bearer(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_unknown_models_404_not_sent_to_openai(settings, monkeypatch):
+async def test_unknown_models_rejected_by_chatgpt_responses(settings, monkeypatch):
     requested = []
     def handler(req):
         requested.append(str(req.url))
-        return httpx.Response(200, json={"models": [{"slug": "gpt-6-sol"}]})
+        assert json.loads(req.content)["model"] == "not-configured"
+        return streamed(404, b'{"error":"unknown model"}')
     fake_upstream(monkeypatch, handler)
     async with await client_for(settings) as client:
         r = await client.post("/v1/responses", json={"model":"not-configured"}, headers=auth_headers())
     assert r.status_code == 404
     assert len(requested) == 1
-    assert requested[0].endswith("/models")
+    assert requested[0] == "https://chatgpt.com/backend-api/codex/responses"
 
 
 @pytest.mark.asyncio
@@ -188,6 +189,43 @@ def test_optional_models_hidden_without_keys(settings):
     assert "azure-gpt" in settings.skipped
     assert "deepseek-v4-pro" in settings.skipped
     assert "kimi-k3" in settings.skipped
+    assert "google-neon" in settings.skipped
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("name", ["neon", "carbon", "hydrogen"])
+async def test_google_translator_route_and_credential_isolation(monkeypatch, name):
+    alias = f"google-{name}"
+    cfg = load(LITELLM_MASTER_KEY="sk-internal-translator", GEMINI_API_KEY="google-private-key")
+    translator = yaml.safe_load((ROOT / "litellm_config.yaml").read_text())
+    deployment = next(model for model in translator["model_list"] if model["model_name"] == alias)
+    assert deployment["litellm_params"]["model"] == f"gemini/gemini-4-{name}"
+    assert deployment["litellm_params"]["api_key"] == "os.environ/GEMINI_API_KEY"
+    catalog = gateway.merge_catalog({"models": []}, cfg.routes)
+    metadata = next(model for model in catalog["models"] if model["slug"] == alias)
+    assert metadata["input_modalities"] == ["text", "image"]
+    assert metadata["context_window"] == 1048576
+    assert metadata["default_reasoning_level"] in {
+        level["effort"] for level in metadata["supported_reasoning_levels"]
+    }
+    payload = {"model": alias, "stream": True, "reasoning": {"effort": "high"},
+               "input": [{"type": "function_call_output", "call_id": "google-call", "output": "agent-ok"}]}
+    events = b'event: response.completed\ndata: {"type":"response.completed"}\n\n'
+
+    def handler(request):
+        assert str(request.url) == "http://translator:4000/v1/responses"
+        assert request.headers["authorization"] == "Bearer sk-internal-translator"
+        assert "google-private-key" not in request.headers.values()
+        assert "chatgpt-account-id" not in request.headers
+        assert "x-local-gateway-key" not in request.headers
+        assert json.loads(request.content) == payload
+        return streamed(200, events, "text/event-stream")
+
+    fake_upstream(monkeypatch, handler)
+    async with await client_for(cfg) as client:
+        response = await client.post("/v1/responses", json=payload, headers=auth_headers())
+    assert response.status_code == 200
+    assert response.content == events
 
 
 def test_invalid_chatgpt_upstream_rejected(tmp_path):

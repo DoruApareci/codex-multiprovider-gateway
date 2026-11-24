@@ -1,6 +1,18 @@
-# Responses -> Chat Completions translation for Moonshot/Kimi.
+# Responses translation for Google Gemini and Moonshot/Kimi.
 # Launch with: docker compose --profile translation up -d --build
 model_list:
+  - model_name: google-neon
+    litellm_params:
+      model: gemini/gemini-4-neon
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: google-carbon
+    litellm_params:
+      model: gemini/gemini-4-carbon
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: google-hydrogen
+    litellm_params:
+      model: gemini/gemini-4-hydrogen
+      api_key: os.environ/GEMINI_API_KEY
   - model_name: kimi-k3
     litellm_params:
       model: moonshot/kimi-k3

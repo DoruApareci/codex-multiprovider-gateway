@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet('Z_AI_KEY', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_BASE_URL', 'AZURE_OPENAI_DEPLOYMENT')]
+    [ValidateSet('Z_AI_KEY', 'DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'GEMINI_API_KEY', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_BASE_URL', 'AZURE_OPENAI_DEPLOYMENT')]
     [string]$Name,
     [switch]$PlainText
 )

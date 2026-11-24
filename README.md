@@ -4,12 +4,12 @@ A local **experimental single-user** multi-provider gateway for the **Codex Wind
 
 - Preserve your existing **ChatGPT/Codex subscription** for OpenAI GPT models: Codex sends its ChatGPT bearer token to the localhost gateway; the gateway forwards it **only** to `https://chatgpt.com/backend-api/codex`.
 - Use independent API keys for **Z.ai GLM**, **Azure OpenAI**, and **DeepSeek** models.
-- Optionally use a separate **LiteLLM** translation container for **Moonshot/Kimi** Chat-Completions-only models, so Codex sees a Responses endpoint.
+- Optionally use a separate **LiteLLM** translation container for **Google Gemini** and **Moonshot/Kimi** models, so Codex sees a Responses endpoint.
 - Populate the Codex model picker with the **live ChatGPT model catalog** plus your configured external models. Each model has a Codex metadata entry.
 - Add providers/models through `providers.yaml`, without editing `gateway.py`.
 - Reject unknown model aliases instead of accidentally forwarding them to OpenAI.
 
-This is not a published product or verified against your real Windows Codex authentication. **14 tests pass using mocked upstream APIs**, including SSE forwarding, tool-output payload pass-through, and credential isolation. End-to-end agent/tool behavior for each real model still requires testing in your Windows installation.
+This is not a published product or verified against your real Windows Codex authentication. **17 tests pass using mocked upstream APIs**, including SSE forwarding, tool-output payload pass-through, and credential isolation. End-to-end agent/tool behavior for each real model still requires testing in your Windows installation.
 
 ## Quick start: GLM + your ChatGPT GPT models
 
@@ -91,6 +91,30 @@ Configured model aliases (enabled automatically if the DeepSeek key is supplied)
 - `deepseek-flash` -> `https://api.deepseek.com/responses`, upstream model `deepseek-flash`
 
 The implementation uses the native DeepSeek Responses API, which currently documents these model identifiers. Verify your account's eligibility and usage prices.
+
+## Add Google Gemini with LiteLLM translator
+
+Google aliases are already enabled in `providers.yaml`. Add a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey), then start both the gateway and translator:
+
+```powershell
+.\scripts\set-provider.ps1 -Name GEMINI_API_KEY
+docker compose --profile translation up -d --build --force-recreate
+.\scripts\validate.ps1
+```
+
+You can also fill the `GEMINI_API_KEY=` entry in `.env` directly. The key is passed only to the translator; the gateway authenticates to it with `LITELLM_MASTER_KEY`. Restarting only the gateway does not start the translator or refresh its credentials.
+
+| Codex alias | Google model | Catalog JSON | Reasoning levels (default) |
+| --- | --- | --- | --- |
+| `google-neon` | `gemini-4-neon` | `catalog/gemini-4-neon.json` | low, medium, high, xhigh (high) |
+| `google-carbon` | `gemini-4-carbon` | `catalog/gemini-4-carbon.json` | low, medium, high (medium) |
+| `google-hydrogen` | `gemini-4-hydrogen` | `catalog/gemini-4-hydrogen.json` | low, medium, high, xhigh (high) |
+
+All three catalogs expose text/image input and a unified 1,048,576-token context window. Audio, video, PDF input, Google's built-in tools, and long-decode extensions are not enabled by these catalogs. Parallel tool calls and reasoning summaries remain disabled until tested through the adapter. The catalog's default reasoning level can be overridden by Codex's `model_reasoning_effort` setting.
+
+Sources: [Neon](https://aistudio.google.com/docs/models/gemini-4-neon), [Carbon](https://aistudio.google.com/docs/models/gemini-4-carbon), [Hydrogen](https://aistudio.google.com/docs/models/gemini-4-hydrogen), [thinking levels](https://aistudio.google.com/docs/thinking), [LiteLLM Gemini](https://docs.litellm.ai/docs/providers/gemini), and [Responses translation](https://docs.litellm.ai/docs/response_api).
+
+These routes use Gemini API quota/billing. After restarting Codex, test each model with the agent tool loop below. Mocked tests verify gateway routing, credential isolation, and payload forwarding; they do not verify LiteLLM-to-Google compatibility.
 
 ## Add Moonshot Kimi with optional LiteLLM translator
 
@@ -181,6 +205,7 @@ Then request a follow-up edit and confirm the file changes. A text-only answer d
 | `glm-5.3-flash` | `https://api.z.ai/api/v1/responses` | Z_AI_KEY only |
 | `azure-gpt` | `${AZURE_OPENAI_BASE_URL}/responses` | Azure `api-key` only |
 | `deepseek-*` | `https://api.deepseek.com/responses` | DeepSeek bearer only |
+| `google-*` | `http://translator:4000/v1/responses` | Internal LiteLLM master key only; translator uses GEMINI_API_KEY |
 | Kimi (opt-in) | `http://translator:4000/v1/responses` | Internal LiteLLM master key only |
 
 The gateway never sends the incoming `Authorization` or `ChatGPT-Account-ID` headers to external providers. It also never forwards the localhost key upstream. The ChatGPT base URL is restricted to the official backend in code even if you edit `providers.yaml`. External model slugs must be predeclared; unknown slugs are checked against your authenticated OpenAI catalog and rejected if not available.

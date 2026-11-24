@@ -25,8 +25,33 @@ providers:
     base_url: http://translator:4000/v1
     auth: bearer
     api_key_env: LITELLM_MASTER_KEY
+  google:
+    # LiteLLM holds the Google key; the gateway uses only its internal master key.
+    protocol: responses
+    base_url: http://translator:4000/v1
+    auth: bearer
+    api_key_env: LITELLM_MASTER_KEY
 
 models:
+  # Requires GEMINI_API_KEY in .env and the Docker translation profile.
+  - slug: google-neon
+    provider: google
+    upstream_model: google-neon
+    metadata_file: catalog/gemini-4-neon.json
+    enabled: true
+
+  - slug: google-carbon
+    provider: google
+    upstream_model: google-carbon
+    metadata_file: catalog/gemini-4-carbon.json
+    enabled: true
+
+  - slug: google-hydrogen
+    provider: google
+    upstream_model: google-hydrogen
+    metadata_file: catalog/gemini-4-hydrogen.json
+    enabled: true
+
   - slug: glm-5.3
     provider: zai
     upstream_model: glm-5.3
