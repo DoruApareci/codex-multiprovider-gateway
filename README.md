@@ -116,6 +116,8 @@ Sources: [Neon](https://aistudio.google.com/docs/models/gemini-4-neon), [Carbon]
 
 These routes use Gemini API quota/billing. After restarting Codex, test each model with the agent tool loop below. Mocked tests verify gateway routing, credential isolation, and payload forwarding; they do not verify LiteLLM-to-Google compatibility.
 
+Google routes remove Codex's `prompt_cache_key` before forwarding to LiteLLM, because Gemini rejects that parameter. Other request fields remain intact; OpenAI subscription requests retain their cache key. Restart the gateway after changing `providers.yaml`.
+
 ## Add Moonshot Kimi with optional LiteLLM translator
 
 Moonshot's Chat Completions API is **not** a Codex Responses API. This  stack optionally uses LiteLLM to translate the two protocols. Translation is less predictable than native Responses, especially for streaming function calls and Codex tools, so **test agents before relying on it**.

@@ -38,18 +38,22 @@ models:
     provider: google
     upstream_model: google-neon
     metadata_file: catalog/gemini-4-neon.json
+    # Codex cache routing hints are unsupported by Gemini through LiteLLM.
+    strip_fields: [prompt_cache_key]
     enabled: true
 
   - slug: google-carbon
     provider: google
     upstream_model: google-carbon
     metadata_file: catalog/gemini-4-carbon.json
+    strip_fields: [prompt_cache_key]
     enabled: true
 
   - slug: google-hydrogen
     provider: google
     upstream_model: google-hydrogen
     metadata_file: catalog/gemini-4-hydrogen.json
+    strip_fields: [prompt_cache_key]
     enabled: true
 
   - slug: glm-5.3

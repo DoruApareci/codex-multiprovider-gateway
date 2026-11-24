@@ -161,7 +161,7 @@ async def test_openai_response_forwarded_byte_for_byte(settings, monkeypatch):
         assert "x-local-gateway-key" not in req.headers
         return streamed(200, events, 'text/event-stream')
     fake_upstream(monkeypatch, handler)
-    payload = {"model":"gpt-6-sol", "stream": True,
+    payload = {"model":"gpt-6-sol", "stream": True, "prompt_cache_key": "codex-cache",
                "input":[{"type":"function_call_output", "call_id":"abc", "output":"result"}]}
     async with await client_for(settings) as client:
         r = await client.post("/v1/responses", json=payload, headers=auth_headers())
@@ -209,7 +209,9 @@ async def test_google_translator_route_and_credential_isolation(monkeypatch, nam
         level["effort"] for level in metadata["supported_reasoning_levels"]
     }
     payload = {"model": alias, "stream": True, "reasoning": {"effort": "high"},
+               "prompt_cache_key": "codex-cache",
                "input": [{"type": "function_call_output", "call_id": "google-call", "output": "agent-ok"}]}
+    expected_payload = {key: value for key, value in payload.items() if key != "prompt_cache_key"}
     events = b'event: response.completed\ndata: {"type":"response.completed"}\n\n'
 
     def handler(request):
@@ -218,7 +220,7 @@ async def test_google_translator_route_and_credential_isolation(monkeypatch, nam
         assert "google-private-key" not in request.headers.values()
         assert "chatgpt-account-id" not in request.headers
         assert "x-local-gateway-key" not in request.headers
-        assert json.loads(request.content) == payload
+        assert json.loads(request.content) == expected_payload
         return streamed(200, events, "text/event-stream")
 
     fake_upstream(monkeypatch, handler)
